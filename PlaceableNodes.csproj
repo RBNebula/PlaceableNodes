@@ -1,0 +1,72 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>PlaceableNodes</AssemblyName>
+    <RootNamespace>PlaceableNodes</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <MineMogulDir Condition="'$(MineMogulDir)' == ''">F:\SteamLibrary\steamapps\common\MineMogul</MineMogulDir>
+    <MineMogulManagedDir>$(MineMogulDir)\MineMogul_Data\Managed</MineMogulManagedDir>
+    <MineMogulBepInExCoreDir>$(MineMogulDir)\BepInEx\core</MineMogulBepInExCoreDir>
+    <MineMogulPluginsDir>$(MineMogulDir)\BepInEx\plugins</MineMogulPluginsDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>$(MineMogulBepInExCoreDir)\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(MineMogulBepInExCoreDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(MineMogulManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(MineMogulManagedDir)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>$(MineMogulManagedDir)\UnityEngine.AssetBundleModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(MineMogulManagedDir)\UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(MineMogulManagedDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(MineMogulManagedDir)\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.JSONSerializeModule">
+      <HintPath>$(MineMogulManagedDir)\UnityEngine.JSONSerializeModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(MineMogulManagedDir)\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(MineMogulManagedDir)\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\AssetBundles\minemogul_nodes">
+      <LogicalName>PlaceableNodes.Embedded.AssetBundle.minemogul_nodes</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\Definitions\AutoMinerResourceDefinitions.json">
+      <LogicalName>PlaceableNodes.Embedded.Definitions.AutoMinerResourceDefinitions.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>

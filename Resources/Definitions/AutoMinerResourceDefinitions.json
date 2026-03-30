@@ -1,0 +1,490 @@
+{
+  "generatedBy": "PlaceableNodes",
+  "generatedOn": "2026-03-19T21:18:51Z",
+  "definitions": [
+    {
+      "name": "HeavyMinerDef-Coal-Standard",
+      "primaryResourceType": "Coal",
+      "spawnProbability": 85,
+      "spawnRate": 6,
+      "possibleOrePrefabs": [
+        {
+          "name": "CoalOreCluster",
+          "resourceType": "Coal",
+          "pieceType": "OreCluster",
+          "weight": 97
+        },
+        {
+          "name": "CoalOre",
+          "resourceType": "Coal",
+          "pieceType": "Ore",
+          "weight": 2.4
+        },
+        {
+          "name": "MysteryGeode",
+          "resourceType": "Mystery",
+          "pieceType": "Geode",
+          "weight": 0.6
+        }
+      ]
+    },
+    {
+      "name": "MinerDef-Coal-HighDiamond",
+      "primaryResourceType": "Coal",
+      "spawnProbability": 85,
+      "spawnRate": 3.3,
+      "possibleOrePrefabs": [
+        {
+          "name": "CoalOre",
+          "resourceType": "Coal",
+          "pieceType": "Ore",
+          "weight": 92
+        },
+        {
+          "name": "CoalCrushed",
+          "resourceType": "Coal",
+          "pieceType": "Crushed",
+          "weight": 5.7
+        },
+        {
+          "name": "Diamond",
+          "resourceType": "Diamond",
+          "pieceType": "Gem",
+          "weight": 2.3
+        }
+      ]
+    },
+    {
+      "name": "MinerDef-Coal-Standard",
+      "primaryResourceType": "Coal",
+      "spawnProbability": 85,
+      "spawnRate": 3.3,
+      "possibleOrePrefabs": [
+        {
+          "name": "CoalOre",
+          "resourceType": "Coal",
+          "pieceType": "Ore",
+          "weight": 94
+        },
+        {
+          "name": "CoalCrushed",
+          "resourceType": "Coal",
+          "pieceType": "Crushed",
+          "weight": 5.5
+        },
+        {
+          "name": "Emerald",
+          "resourceType": "Emerald",
+          "pieceType": "Gem",
+          "weight": 0.4
+        },
+        {
+          "name": "Diamond",
+          "resourceType": "Diamond",
+          "pieceType": "Gem",
+          "weight": 0.1
+        }
+      ]
+    },
+    {
+      "name": "MinerDef-CopperAndCoal-LowCopper",
+      "primaryResourceType": "Coal",
+      "spawnProbability": 88,
+      "spawnRate": 3.6,
+      "possibleOrePrefabs": [
+        {
+          "name": "CoalOre",
+          "resourceType": "Coal",
+          "pieceType": "Ore",
+          "weight": 73
+        },
+        {
+          "name": "CopperOre",
+          "resourceType": "Copper",
+          "pieceType": "Ore",
+          "weight": 24
+        },
+        {
+          "name": "CopperCrushed",
+          "resourceType": "Copper",
+          "pieceType": "Crushed",
+          "weight": 2.8
+        },
+        {
+          "name": "Diamond",
+          "resourceType": "Diamond",
+          "pieceType": "Gem",
+          "weight": 0.2
+        }
+      ]
+    },
+    {
+      "name": "MinerDef-GoldAndCoal-Standard",
+      "primaryResourceType": "Coal",
+      "spawnProbability": 80,
+      "spawnRate": 5,
+      "possibleOrePrefabs": [
+        {
+          "name": "CoalOre",
+          "resourceType": "Coal",
+          "pieceType": "Ore",
+          "weight": 57
+        },
+        {
+          "name": "GoldOre",
+          "resourceType": "Gold",
+          "pieceType": "Ore",
+          "weight": 41
+        },
+        {
+          "name": "GoldCrushed",
+          "resourceType": "Gold",
+          "pieceType": "Crushed",
+          "weight": 1.8
+        },
+        {
+          "name": "Diamond",
+          "resourceType": "Diamond",
+          "pieceType": "Gem",
+          "weight": 0.2
+        }
+      ]
+    },
+    {
+      "name": "HeavyMinerDef-Copper-Standard",
+      "primaryResourceType": "Copper",
+      "spawnProbability": 85,
+      "spawnRate": 6.4,
+      "possibleOrePrefabs": [
+        {
+          "name": "CopperOreCluster",
+          "resourceType": "Copper",
+          "pieceType": "OreCluster",
+          "weight": 97
+        },
+        {
+          "name": "CopperOre",
+          "resourceType": "Copper",
+          "pieceType": "Ore",
+          "weight": 2.7
+        },
+        {
+          "name": "MysteryGeode",
+          "resourceType": "Mystery",
+          "pieceType": "Geode",
+          "weight": 0.3
+        }
+      ]
+    },
+    {
+      "name": "MinerDef-Copper-Basic",
+      "primaryResourceType": "Copper",
+      "spawnProbability": 88,
+      "spawnRate": 3.6,
+      "possibleOrePrefabs": [
+        {
+          "name": "CopperOre",
+          "resourceType": "Copper",
+          "pieceType": "Ore",
+          "weight": 92
+        },
+        {
+          "name": "CopperCrushed",
+          "resourceType": "Copper",
+          "pieceType": "Crushed",
+          "weight": 7.8
+        },
+        {
+          "name": "Emerald",
+          "resourceType": "Emerald",
+          "pieceType": "Gem",
+          "weight": 0.2
+        }
+      ]
+    },
+    {
+      "name": "MinerDef-CopperAndCoal-Standard",
+      "primaryResourceType": "Copper",
+      "spawnProbability": 88,
+      "spawnRate": 3.6,
+      "possibleOrePrefabs": [
+        {
+          "name": "CopperOre",
+          "resourceType": "Copper",
+          "pieceType": "Ore",
+          "weight": 52
+        },
+        {
+          "name": "CoalOre",
+          "resourceType": "Coal",
+          "pieceType": "Ore",
+          "weight": 45
+        },
+        {
+          "name": "CopperCrushed",
+          "resourceType": "Copper",
+          "pieceType": "Crushed",
+          "weight": 2.7
+        },
+        {
+          "name": "Diamond",
+          "resourceType": "Diamond",
+          "pieceType": "Gem",
+          "weight": 0.3
+        }
+      ]
+    },
+    {
+      "name": "HeavyMinerDef-Gold-Standard",
+      "primaryResourceType": "Gold",
+      "spawnProbability": 80,
+      "spawnRate": 9,
+      "possibleOrePrefabs": [
+        {
+          "name": "GoldOreCluster",
+          "resourceType": "Gold",
+          "pieceType": "OreCluster",
+          "weight": 92
+        },
+        {
+          "name": "GoldOre",
+          "resourceType": "Gold",
+          "pieceType": "Ore",
+          "weight": 7.6
+        },
+        {
+          "name": "MysteryGeode",
+          "resourceType": "Mystery",
+          "pieceType": "Geode",
+          "weight": 0.4
+        }
+      ]
+    },
+    {
+      "name": "MinerDef-Gold-Pure",
+      "primaryResourceType": "Gold",
+      "spawnProbability": 75,
+      "spawnRate": 5.6,
+      "possibleOrePrefabs": [
+        {
+          "name": "GoldOre",
+          "resourceType": "Gold",
+          "pieceType": "Ore",
+          "weight": 99
+        },
+        {
+          "name": "Diamond",
+          "resourceType": "Diamond",
+          "pieceType": "Gem",
+          "weight": 0.7
+        },
+        {
+          "name": "GoldCrushed",
+          "resourceType": "Gold",
+          "pieceType": "Crushed",
+          "weight": 0.3
+        }
+      ]
+    },
+    {
+      "name": "MinerDef-Gold-Standard",
+      "primaryResourceType": "Gold",
+      "spawnProbability": 75,
+      "spawnRate": 5.6,
+      "possibleOrePrefabs": [
+        {
+          "name": "GoldOre",
+          "resourceType": "Gold",
+          "pieceType": "Ore",
+          "weight": 93
+        },
+        {
+          "name": "GoldCrushed",
+          "resourceType": "Gold",
+          "pieceType": "Crushed",
+          "weight": 5.5
+        },
+        {
+          "name": "Diamond",
+          "resourceType": "Diamond",
+          "pieceType": "Gem",
+          "weight": 1
+        },
+        {
+          "name": "Emerald",
+          "resourceType": "Emerald",
+          "pieceType": "Gem",
+          "weight": 0.5
+        }
+      ]
+    },
+    {
+      "name": "HeavyMinerDef-Iron-HighGeode",
+      "primaryResourceType": "Iron",
+      "spawnProbability": 85,
+      "spawnRate": 7,
+      "possibleOrePrefabs": [
+        {
+          "name": "IronOreCluster",
+          "resourceType": "Iron",
+          "pieceType": "OreCluster",
+          "weight": 96
+        },
+        {
+          "name": "IronOre",
+          "resourceType": "Iron",
+          "pieceType": "Ore",
+          "weight": 2.7
+        },
+        {
+          "name": "MysteryGeode",
+          "resourceType": "Mystery",
+          "pieceType": "Geode",
+          "weight": 1.3
+        }
+      ]
+    },
+    {
+      "name": "HeavyMinerDef-Iron-Standard",
+      "primaryResourceType": "Iron",
+      "spawnProbability": 85,
+      "spawnRate": 7,
+      "possibleOrePrefabs": [
+        {
+          "name": "IronOreCluster",
+          "resourceType": "Iron",
+          "pieceType": "OreCluster",
+          "weight": 94
+        },
+        {
+          "name": "IronOre",
+          "resourceType": "Iron",
+          "pieceType": "Ore",
+          "weight": 5.3
+        },
+        {
+          "name": "MysteryGeode",
+          "resourceType": "Mystery",
+          "pieceType": "Geode",
+          "weight": 0.7
+        }
+      ]
+    },
+    {
+      "name": "MinerDef-Iron-Basic",
+      "primaryResourceType": "Iron",
+      "spawnProbability": 85,
+      "spawnRate": 4,
+      "possibleOrePrefabs": [
+        {
+          "name": "IronOre",
+          "resourceType": "Iron",
+          "pieceType": "Ore",
+          "weight": 94
+        },
+        {
+          "name": "IronCrushed",
+          "resourceType": "Iron",
+          "pieceType": "Crushed",
+          "weight": 5.7
+        },
+        {
+          "name": "Emerald",
+          "resourceType": "Emerald",
+          "pieceType": "Gem",
+          "weight": 0.3
+        }
+      ]
+    },
+    {
+      "name": "MinerDef-Iron-HighEmerald",
+      "primaryResourceType": "Iron",
+      "spawnProbability": 85,
+      "spawnRate": 4,
+      "possibleOrePrefabs": [
+        {
+          "name": "IronOre",
+          "resourceType": "Iron",
+          "pieceType": "Ore",
+          "weight": 93
+        },
+        {
+          "name": "IronCrushed",
+          "resourceType": "Iron",
+          "pieceType": "Crushed",
+          "weight": 4.3
+        },
+        {
+          "name": "Emerald",
+          "resourceType": "Emerald",
+          "pieceType": "Gem",
+          "weight": 2.7
+        }
+      ]
+    },
+    {
+      "name": "MinerDef-Iron-Standard",
+      "primaryResourceType": "Iron",
+      "spawnProbability": 85,
+      "spawnRate": 4,
+      "possibleOrePrefabs": [
+        {
+          "name": "IronOre",
+          "resourceType": "Iron",
+          "pieceType": "Ore",
+          "weight": 94
+        },
+        {
+          "name": "IronCrushed",
+          "resourceType": "Iron",
+          "pieceType": "Crushed",
+          "weight": 5.2
+        },
+        {
+          "name": "Emerald",
+          "resourceType": "Emerald",
+          "pieceType": "Gem",
+          "weight": 0.5
+        },
+        {
+          "name": "Diamond",
+          "resourceType": "Diamond",
+          "pieceType": "Gem",
+          "weight": 0.3
+        }
+      ]
+    },
+    {
+      "name": "MinerDef-IronAndCoal-Standard",
+      "primaryResourceType": "Iron",
+      "spawnProbability": 85,
+      "spawnRate": 4,
+      "possibleOrePrefabs": [
+        {
+          "name": "IronOre",
+          "resourceType": "Iron",
+          "pieceType": "Ore",
+          "weight": 54
+        },
+        {
+          "name": "CoalOre",
+          "resourceType": "Coal",
+          "pieceType": "Ore",
+          "weight": 42
+        },
+        {
+          "name": "IronCrushed",
+          "resourceType": "Iron",
+          "pieceType": "Crushed",
+          "weight": 3.8
+        },
+        {
+          "name": "Diamond",
+          "resourceType": "Diamond",
+          "pieceType": "Gem",
+          "weight": 0.2
+        }
+      ]
+    }
+  ]
+}
