@@ -88,6 +88,11 @@ internal static class PlaceableNodesBuildingPlacementNodeStartPatch
 {
     private static void Postfix(BuildingPlacementNode __instance)
     {
+        if (!PlaceableNodesUtility.IsCustomPlacementNode(__instance))
+        {
+            return;
+        }
+
         PlaceableNodesUtility.SanitizePlacementNodeGhostPrefab(__instance);
         try
         {
@@ -113,6 +118,11 @@ internal static class PlaceableNodesBuildingPlacementNodeShowGhostPatch
 
     private static void Prefix(BuildingPlacementNode __instance)
     {
+        if (!PlaceableNodesUtility.IsCustomPlacementNode(__instance))
+        {
+            return;
+        }
+
         try
         {
             PlaceableNodesUtility.SanitizePlacementNodeGhostPrefab(__instance);
