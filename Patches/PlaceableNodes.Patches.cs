@@ -2,6 +2,7 @@ using HarmonyLib;
 using System.Collections;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace PlaceableNodes;
@@ -12,6 +13,39 @@ internal static class PlaceableNodesEconomyManagerStartPatch
     private static void Prefix(EconomyManager __instance)
     {
         PlaceableNodes.Instance?.InjectShopDefinitions(__instance);
+    }
+}
+
+[HarmonyPatch(typeof(SavingLoadingManager), "Awake")]
+internal static class PlaceableNodesSavingLoadingManagerAwakePatch
+{
+    private static void Postfix(SavingLoadingManager __instance)
+    {
+        PlaceableNodes.Instance?.EnsureRuntimeReadyForSaveLoading(__instance);
+    }
+}
+
+[HarmonyPatch(typeof(SavingLoadingManager), nameof(SavingLoadingManager.GetPrefab))]
+internal static class PlaceableNodesSavingLoadingManagerGetPrefabPatch
+{
+    private static void Prefix(SavingLoadingManager __instance, SavableObjectID objectID)
+    {
+        if (PlaceableNodesConstants.Plans.Any(plan => plan.VariantBlockIds.Contains((int)objectID)))
+        {
+            PlaceableNodes.Instance?.EnsureRuntimeReadyForSaveLoading(__instance);
+        }
+    }
+}
+
+[HarmonyPatch(typeof(SavingLoadingManager), nameof(SavingLoadingManager.GetBuildingInventoryDefinition))]
+internal static class PlaceableNodesSavingLoadingManagerGetBuildingInventoryDefinitionPatch
+{
+    private static void Prefix(SavingLoadingManager __instance, SavableObjectID objectID)
+    {
+        if (PlaceableNodesConstants.Plans.Any(plan => plan.VariantBlockIds.Contains((int)objectID)))
+        {
+            PlaceableNodes.Instance?.EnsureRuntimeReadyForSaveLoading(__instance);
+        }
     }
 }
 
@@ -108,6 +142,7 @@ internal static class PlaceableNodesBuildingPlacementNodeStartPatch
         }
 
         PlaceableNodesUtility.TryRepairPlacementNodeAttachment(__instance);
+        PlaceableNodes.Instance?.SuppressPlacementNodeIfNeeded(__instance);
     }
 }
 
@@ -116,11 +151,11 @@ internal static class PlaceableNodesBuildingPlacementNodeShowGhostPatch
 {
     private static readonly HashSet<string> LoggedGhostExceptionKeys = new(StringComparer.Ordinal);
 
-    private static void Prefix(BuildingPlacementNode __instance)
+    private static bool Prefix(BuildingPlacementNode __instance, bool show)
     {
         if (!PlaceableNodesUtility.IsCustomPlacementNode(__instance))
         {
-            return;
+            return true;
         }
 
         try
@@ -141,7 +176,24 @@ internal static class PlaceableNodesBuildingPlacementNodeShowGhostPatch
             }
         }
 
+        if (show && PlaceableNodes.Instance?.IsHoldingCustomAutoMinerPlacementNode() == true)
+        {
+            if (PlaceableNodesUtility.IsUsableGameObject(__instance.GhostPrefab))
+            {
+                __instance.GhostPrefab.SetActive(false);
+            }
+
+            PlaceableNodesUtility.TryRepairPlacementNodeAttachment(__instance);
+            return false;
+        }
+
+        if (!PlaceableNodesUtility.IsUsableGameObject(__instance.GhostPrefab))
+        {
+            return false;
+        }
+
         PlaceableNodesUtility.TryRepairPlacementNodeAttachment(__instance);
+        return true;
     }
 
     private static Exception? Finalizer(BuildingPlacementNode __instance, Exception? __exception)

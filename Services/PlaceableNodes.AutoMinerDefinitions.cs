@@ -15,6 +15,7 @@ public sealed partial class PlaceableNodes
 {
     private const string RebindApiTypeName = "Rebind.RebindApi";
     private const string ManagedKeybindPacketTypeName = "Rebind.ManagedKeybindPacket";
+    private const float SceneReferenceLookupRetrySeconds = 1f;
 
     private void TryRegisterRebindKeybinds()
     {
@@ -149,8 +150,10 @@ public sealed partial class PlaceableNodes
 
     private void OnGUI()
     {
+        long guiStartedAt = BeginDiagnosticSample();
         if (string.IsNullOrEmpty(_definitionOverlayText))
         {
+            RecordGuiDiagnostic(guiStartedAt);
             return;
         }
 
@@ -161,6 +164,7 @@ public sealed partial class PlaceableNodes
         GUI.DrawTexture(panelRect, Texture2D.whiteTexture, ScaleMode.StretchToFill, alphaBlend: false);
         GUI.color = previousColor;
         GUI.Label(panelRect, _definitionOverlayText, _definitionOverlayStyle);
+        RecordGuiDiagnostic(guiStartedAt);
     }
 
     private void TryLoadAutoMinerDefinitionsFromDisk()
@@ -169,7 +173,7 @@ public sealed partial class PlaceableNodes
         {
             if (!_autoMinerDefinitionsLoadStateLogged)
             {
-                Logger.LogInfo($"{ModInfo.LOG_PREFIX} Skipping packaged auto-miner definition load because definitions are already marked as loaded.");
+                Logger.LogDebug($"{ModInfo.LOG_PREFIX} Skipping packaged auto-miner definition load because definitions are already marked as loaded.");
                 _autoMinerDefinitionsLoadStateLogged = true;
             }
 
@@ -184,6 +188,7 @@ public sealed partial class PlaceableNodes
                 _autoMinerDefinitionsLoadStateLogged = true;
             }
 
+            _diskAutoMinerDefinitionsLoaded = true;
             return;
         }
 
@@ -195,6 +200,7 @@ public sealed partial class PlaceableNodes
                 _autoMinerDefinitionsLoadStateLogged = true;
             }
 
+            _diskAutoMinerDefinitionsLoaded = true;
             return;
         }
 
@@ -202,7 +208,7 @@ public sealed partial class PlaceableNodes
         {
             _autoMinerDefinitionsLoadStateLogged = false;
             _autoMinerDefinitionsLoadAttemptCount++;
-            Logger.LogInfo($"{ModInfo.LOG_PREFIX} Packaged auto-miner definition load attempt #{_autoMinerDefinitionsLoadAttemptCount} from '{_autoMinerDefinitionsDataPath}'.");
+            Logger.LogDebug($"{ModInfo.LOG_PREFIX} Packaged auto-miner definition load attempt #{_autoMinerDefinitionsLoadAttemptCount} from '{_autoMinerDefinitionsDataPath}'.");
             string json = File.ReadAllText(_autoMinerDefinitionsDataPath);
             AutoMinerDefinitionExportFile? exportFile = ParseAutoMinerDefinitionExportFile(json);
             if (exportFile?.definitions == null || exportFile.definitions.Length == 0)
@@ -220,7 +226,7 @@ public sealed partial class PlaceableNodes
                 if (definition != null && !string.IsNullOrWhiteSpace(definition.name))
                 {
                     _diskAutoMinerDefinitionsByName[definition.name] = definition;
-                    Logger.LogInfo($"{ModInfo.LOG_PREFIX} Created packaged runtime definition '{definition.name}' with primary resource '{definition.GetPrimaryResourceType()}'.");
+                    Logger.LogDebug($"{ModInfo.LOG_PREFIX} Created packaged runtime definition '{definition.name}' with primary resource '{definition.GetPrimaryResourceType()}'.");
                 }
             }
 
@@ -231,20 +237,29 @@ public sealed partial class PlaceableNodes
             }
 
             _diskAutoMinerDefinitionsLoaded = true;
+            _availableAutoMinerDefinitionsByResource.Clear();
             Logger.LogInfo($"{ModInfo.LOG_PREFIX} Loaded {_diskAutoMinerDefinitionsByName.Count} packaged auto-miner resource definitions from {_autoMinerDefinitionsDataPath}.");
         }
         catch (Exception ex)
         {
             _diskAutoMinerDefinitionsLoaded = true;
+            _availableAutoMinerDefinitionsByResource.Clear();
             Logger.LogWarning($"{ModInfo.LOG_PREFIX} Failed to load packaged auto-miner resource definitions: {ex.Message}");
         }
     }
 
     private List<AutoMinerResourceDefinition> GetAvailableAutoMinerDefinitions(ResourceType? resourceType)
     {
+        if (resourceType.HasValue && _availableAutoMinerDefinitionsByResource.TryGetValue(resourceType.Value, out List<AutoMinerResourceDefinition> cachedDefinitions))
+        {
+            return cachedDefinitions;
+        }
+
+        long scanStartedAt = BeginDiagnosticSample();
         List<AutoMinerResourceDefinition> liveDefinitions = Resources.FindObjectsOfTypeAll<AutoMinerResourceDefinition>()
             .Where(definition => definition != null)
             .ToList();
+        RecordSceneScanDiagnostic(scanStartedAt);
 
         if (resourceType.HasValue)
         {
@@ -277,17 +292,25 @@ public sealed partial class PlaceableNodes
                     .GroupBy(definition => definition.name, StringComparer.OrdinalIgnoreCase)
                     .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
-                return curatedNames
+                List<AutoMinerResourceDefinition> curatedDefinitions = curatedNames
                     .Where(name => byName.ContainsKey(name))
                     .Select(name => byName[name])
                     .ToList();
+                _availableAutoMinerDefinitionsByResource[resourceType.Value] = curatedDefinitions;
+                return curatedDefinitions;
             }
         }
 
-        return materialized
+        List<AutoMinerResourceDefinition> sortedDefinitions = materialized
             .OrderBy(definition => definition.GetPrimaryResourceType().ToString(), StringComparer.OrdinalIgnoreCase)
             .ThenBy(definition => definition.name, StringComparer.OrdinalIgnoreCase)
             .ToList();
+        if (resourceType.HasValue)
+        {
+            _availableAutoMinerDefinitionsByResource[resourceType.Value] = sortedDefinitions;
+        }
+
+        return sortedDefinitions;
     }
 
     private void LogAvailableDefinitionsForHeldNode(string reason, BuildingPlacementNode heldNode, AutoMinerResourceDefinition currentDefinition, IReadOnlyList<AutoMinerResourceDefinition> definitions)
@@ -356,16 +379,50 @@ public sealed partial class PlaceableNodes
         return node;
     }
 
-    private static BuildingObject? GetHeldBuildingObject()
+    internal bool IsHoldingCustomAutoMinerPlacementNode()
     {
-        PlayerController? playerController = Object.FindFirstObjectByType<PlayerController>();
-        if (playerController?.HeldObject != null)
+        return GetHeldCustomAutoMinerPlacementNode() != null;
+    }
+
+    private BuildingObject? GetHeldBuildingObject()
+    {
+        ResolveSceneReferencesIfNeeded();
+
+        if (_cachedPlayerController?.HeldObject != null)
         {
-            return playerController.HeldObject.GetComponent<BuildingObject>();
+            return _cachedPlayerController.HeldObject.GetComponent<BuildingObject>();
         }
 
-        BuildingManager? buildingManager = Object.FindFirstObjectByType<BuildingManager>();
-        return buildingManager?.GetGhostObject();
+        return _cachedBuildingManager?.GetGhostObject();
+    }
+
+    private void ResolveSceneReferencesIfNeeded()
+    {
+        if (_cachedPlayerController != null && _cachedBuildingManager != null)
+        {
+            return;
+        }
+
+        float now = Time.unscaledTime;
+        if (now < _nextSceneReferenceLookupTime)
+        {
+            return;
+        }
+
+        _nextSceneReferenceLookupTime = now + SceneReferenceLookupRetrySeconds;
+        if (_cachedPlayerController == null)
+        {
+            long playerScanStartedAt = BeginDiagnosticSample();
+            _cachedPlayerController = Object.FindFirstObjectByType<PlayerController>();
+            RecordSceneScanDiagnostic(playerScanStartedAt);
+        }
+
+        if (_cachedBuildingManager == null)
+        {
+            long buildingManagerScanStartedAt = BeginDiagnosticSample();
+            _cachedBuildingManager = Object.FindFirstObjectByType<BuildingManager>();
+            RecordSceneScanDiagnostic(buildingManagerScanStartedAt);
+        }
     }
 
     private void ApplyAutoMinerDefinitionToHeldItem(BuildingPlacementNode heldNode, AutoMinerResourceDefinition definition)
@@ -465,13 +522,15 @@ public sealed partial class PlaceableNodes
             return null;
         }
 
+        long scanStartedAt = BeginDiagnosticSample();
         OrePiece? byName = Resources.FindObjectsOfTypeAll<OrePiece>()
             .FirstOrDefault(orePiece =>
                 orePiece != null &&
                 string.Equals(orePiece.name, record.name, StringComparison.OrdinalIgnoreCase));
+        RecordSceneScanDiagnostic(scanStartedAt);
         if (byName != null)
         {
-            Logger.LogInfo($"{ModInfo.LOG_PREFIX} Resolved packaged ore prefab '{record.name}' directly from loaded resources.");
+            Logger.LogDebug($"{ModInfo.LOG_PREFIX} Resolved packaged ore prefab '{record.name}' directly from loaded resources.");
             return byName;
         }
 
@@ -486,7 +545,7 @@ public sealed partial class PlaceableNodes
         OrePiece? fallbackPrefab = FindOrePiecePrefab(resourceType, pieceType);
         if (fallbackPrefab != null)
         {
-            Logger.LogInfo(
+            Logger.LogDebug(
                 $"{ModInfo.LOG_PREFIX} Resolved packaged ore prefab '{record.name}' by fallback resource/piece lookup to '{fallbackPrefab.name}' ({resourceType}/{pieceType}).");
             return fallbackPrefab;
         }

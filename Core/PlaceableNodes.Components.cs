@@ -53,21 +53,42 @@ internal sealed class PlaceableNodesOreRuntimeInitializer : MonoBehaviour
 
 internal sealed class PlaceableNodesPlacementNodeBootstrap : MonoBehaviour
 {
-    private void Start()
+    private const float RepairRetryIntervalSeconds = 0.25f;
+    private const float RepairRetryDurationSeconds = 6f;
+
+    private float _stopRepairingAt;
+    private float _nextRepairAttemptAt;
+
+    private void Awake()
     {
-        EnsureVisualState();
+        _stopRepairingAt = Time.unscaledTime + RepairRetryDurationSeconds;
     }
 
-    private void LateUpdate()
+    private void Start()
     {
         EnsureVisualState();
         TryAttachNearbyMiner();
     }
 
-    private void TryAttachNearbyMiner()
+    private void LateUpdate()
+    {
+        EnsureVisualState();
+        if (Time.unscaledTime < _nextRepairAttemptAt)
+        {
+            return;
+        }
+
+        _nextRepairAttemptAt = Time.unscaledTime + RepairRetryIntervalSeconds;
+        if (TryAttachNearbyMiner() || Time.unscaledTime >= _stopRepairingAt)
+        {
+            enabled = false;
+        }
+    }
+
+    private bool TryAttachNearbyMiner()
     {
         BuildingPlacementNode node = GetComponent<BuildingPlacementNode>();
-        PlaceableNodesUtility.TryRepairPlacementNodeAttachment(node);
+        return PlaceableNodesUtility.TryRepairPlacementNodeAttachment(node);
     }
 
     private void EnsureVisualState()

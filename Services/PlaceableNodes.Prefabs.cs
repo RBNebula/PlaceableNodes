@@ -24,6 +24,12 @@ public sealed partial class PlaceableNodes
                 continue;
             }
 
+            if (!TryHydrateRuntimeDefinitions(runtime))
+            {
+                allConfigured = false;
+                continue;
+            }
+
             bool configured = runtime.Plan.Kind == PlaceableNodeKind.OreNode
                 ? TryConfigureOreNodeItem(runtime)
                 : TryConfigureAutoMinerNodeItem(runtime);
@@ -43,6 +49,11 @@ public sealed partial class PlaceableNodes
 
     private bool TryConfigureOreNodeItem(ShopItemRuntime runtime)
     {
+        if (runtime.Definition == null)
+        {
+            return false;
+        }
+
         runtime.VariantPrefabs.Clear();
 
         for (int i = 0; i < runtime.Plan.VariantBlockIds.Length; i++)
@@ -66,6 +77,11 @@ public sealed partial class PlaceableNodes
 
     private bool TryConfigureAutoMinerNodeItem(ShopItemRuntime runtime)
     {
+        if (runtime.Definition == null)
+        {
+            return false;
+        }
+
         runtime.VariantPrefabs.Clear();
 
         BuildingPlacementNode? nodeTemplate = FindPlacementNodeTemplate(runtime.Plan.ResourceType);
@@ -190,30 +206,27 @@ public sealed partial class PlaceableNodes
             return false;
         }
 
-        GameObject? ghostTemplate = ResolveAutoMinerGhostTemplate(nodeTemplate, visibleChild, out bool usedFallbackVisual);
-        if (ghostTemplate == null)
-        {
-            Logger.LogWarning($"{ModInfo.LOG_PREFIX} Missing auto-miner ghost template for {plan.DisplayName}.");
-            return false;
-        }
-
-        GameObject? ghostChild = PlaceableNodesUtility.AttachTemplateChild(shell, ghostTemplate, "GhostMiner", keepRenderersEnabled: true);
-        if (ghostChild == null)
-        {
-            return false;
-        }
-
-        PlaceableNodesUtility.DestroyColliders(ghostChild);
-        ghostChild.SetActive(false);
-        if (usedFallbackVisual && ghostChild.GetComponent<PlaceableNodesGhostFallbackMarker>() == null)
-        {
-            ghostChild.AddComponent<PlaceableNodesGhostFallbackMarker>();
-        }
-
         BuildingPlacementNode node = shell.GetComponent<BuildingPlacementNode>() ?? shell.gameObject.AddComponent<BuildingPlacementNode>();
         node.RequirementType = nodeTemplate?.RequirementType ?? PlacementNodeRequirement.AutoMiner;
         node.AutoMinerResourceDefinition = resourceDefinition;
-        node.GhostPrefab = ghostChild;
+        node.GhostPrefab = null;
+
+        GameObject? ghostTemplate = ResolveAutoMinerGhostTemplate(nodeTemplate, visibleChild, out bool usedFallbackVisual);
+        if (ghostTemplate != null)
+        {
+            GameObject? ghostChild = PlaceableNodesUtility.AttachTemplateChild(shell, ghostTemplate, "GhostMiner", keepRenderersEnabled: true);
+            if (ghostChild != null)
+            {
+                PlaceableNodesUtility.DestroyColliders(ghostChild);
+                ghostChild.SetActive(false);
+                if (usedFallbackVisual && ghostChild.GetComponent<PlaceableNodesGhostFallbackMarker>() == null)
+                {
+                    ghostChild.AddComponent<PlaceableNodesGhostFallbackMarker>();
+                }
+
+                node.GhostPrefab = ghostChild;
+            }
+        }
 
         if (shell.GetComponent<PlaceableNodesPlacementNodeBootstrap>() == null)
         {
@@ -319,11 +332,10 @@ public sealed partial class PlaceableNodes
 
         if (template != null)
         {
-            Logger.LogWarning($"{ModInfo.LOG_PREFIX} Resolved auto-miner ghost template was stale; falling back to visual template.");
+            Logger.LogWarning($"{ModInfo.LOG_PREFIX} Resolved auto-miner ghost template was stale; custom placement node ghost will stay disabled until a native auto-miner ghost is available.");
         }
 
-        usedFallbackVisual = PlaceableNodesUtility.IsUsableGameObject(fallbackVisual);
-        return usedFallbackVisual ? fallbackVisual : null;
+        return null;
     }
 
     private GameObject? FindAutoMinerGhostTemplate()
@@ -487,12 +499,14 @@ public sealed partial class PlaceableNodes
 
     private BuildingPlacementNode? FindPlacementNodeTemplate(ResourceType resourceType)
     {
+        long scanStartedAt = BeginDiagnosticSample();
         string exactName = "AutoMinerNode" + GetResourceKey(resourceType);
         BuildingPlacementNode[] nodes = Resources.FindObjectsOfTypeAll<BuildingPlacementNode>()
             .Where(node =>
                 node != null &&
                 node.GetComponent<PlaceableNodesPlacementItemMarker>() == null)
             .ToArray();
+        RecordSceneScanDiagnostic(scanStartedAt);
 
         BuildingPlacementNode? exactMatch = nodes.FirstOrDefault(node => string.Equals(node.gameObject.name, exactName, StringComparison.OrdinalIgnoreCase));
         if (exactMatch != null)
@@ -517,9 +531,11 @@ public sealed partial class PlaceableNodes
 
     private AutoMinerResourceDefinition? FindAutoMinerResourceDefinition(ResourceType resourceType)
     {
+        long scanStartedAt = BeginDiagnosticSample();
         AutoMinerResourceDefinition[] definitions = Resources.FindObjectsOfTypeAll<AutoMinerResourceDefinition>()
             .Where(definition => definition != null && definition.GetPrimaryResourceType() == resourceType)
             .ToArray();
+        RecordSceneScanDiagnostic(scanStartedAt);
 
         AutoMinerResourceDefinition? standardDefinition = definitions.FirstOrDefault(MatchesStandardAutoMinerDefinition);
         if (standardDefinition != null)
@@ -721,19 +737,23 @@ public sealed partial class PlaceableNodes
 
     private OrePiece? FindOrePiecePrefab(ResourceType resourceType, PieceType pieceType)
     {
+        long scanStartedAt = BeginDiagnosticSample();
         SavingLoadingManager? savingLoadingManager = Object.FindFirstObjectByType<SavingLoadingManager>();
         OrePiece? prefab = savingLoadingManager?.GetOrePiecePrefab(resourceType, pieceType, false);
         if (prefab != null)
         {
+            RecordSceneScanDiagnostic(scanStartedAt);
             return prefab;
         }
 
-        return Resources.FindObjectsOfTypeAll<OrePiece>()
+        OrePiece? fallbackPrefab = Resources.FindObjectsOfTypeAll<OrePiece>()
             .FirstOrDefault(orePiece =>
                 orePiece != null &&
                 orePiece.ResourceType == resourceType &&
                 orePiece.PieceType == pieceType &&
                 orePiece.GetComponent<PlaceableNodesPlacementItemMarker>() == null);
+        RecordSceneScanDiagnostic(scanStartedAt);
+        return fallbackPrefab;
     }
 
     private SoundDefinition? FindFallbackOreTakeDamageSound(ResourceType resourceType)
@@ -752,53 +772,24 @@ public sealed partial class PlaceableNodes
             : PlaceableNodesUtility.GetPrivateField<SoundDefinition>(firstTemplate, "_takeDamageSoundDefinition");
     }
 
-    private void ConfigureShellDefaults(BuildingObject shell, BuildingInventoryDefinition definition, int blockId)
-    {
-        shell.Definition = definition;
-        shell.SavableObjectID = (SavableObjectID)blockId;
-        shell.RequiresFlatGround = false;
-        shell.PlacementNodeRequirement = PlacementNodeRequirement.None;
-        shell.SupportType = SupportType.None;
-        shell.BuildingSupportsEnabled = false;
-        shell.RotatingShouldMirrorWhenSnapped = false;
-        definition.CanBePlacedInTerrain = true;
-
-        if (shell.PhysicalColliderObject == null)
-        {
-            shell.PhysicalColliderObject = shell.gameObject;
-        }
-
-        if (shell.BuildingPlacementColliderObject == null)
-        {
-            GameObject placementObject = new("BuildingPlacementColliderObject");
-            placementObject.transform.SetParent(shell.transform, false);
-            SetBuildingLayer(placementObject);
-            shell.BuildingPlacementColliderObject = placementObject;
-        }
-
-        if (shell.BuildingCrateSpawnPoint == null)
-        {
-            GameObject spawnPoint = new("BuildingCrateSpawnPoint");
-            spawnPoint.transform.SetParent(shell.transform, false);
-            shell.BuildingCrateSpawnPoint = spawnPoint.transform;
-        }
-
-        if (shell.GetComponent<PlaceableNodesPlacementColliderController>() == null)
-        {
-            shell.gameObject.AddComponent<PlaceableNodesPlacementColliderController>();
-        }
-
-        if (shell.GetComponent<PlaceableNodesPlacementItemMarker>() == null)
-        {
-            shell.gameObject.AddComponent<PlaceableNodesPlacementItemMarker>();
-        }
-    }
-
     private BuildingObject CreateAdditionalVariantShell(ShopItemRuntime runtime, int blockId, string name)
     {
         BuildingObject shell = CreatePrimaryShell(GetOrCreateRuntimePrefabRoot(), name);
         ConfigureShellDefaults(shell, runtime.Definition, blockId);
+        TryRegisterPrefabWithCurrentSavingLoadingManager(shell);
         return shell;
+    }
+
+    internal void EnsureRuntimeReadyForSaveLoading(SavingLoadingManager? savingLoadingManager)
+    {
+        TryLoadNodeBundle();
+        TryRegisterShopItems();
+        TryConfigurePrefabs();
+
+        if (savingLoadingManager != null)
+        {
+            RegisterSavablePrefabs(savingLoadingManager);
+        }
     }
 
     private void EnsureSavablePrefabRegistration()
@@ -808,27 +799,78 @@ public sealed partial class PlaceableNodes
             return;
         }
 
+        float now = Time.unscaledTime;
+        if (now < _nextSavablePrefabRegistrationAttemptTime)
+        {
+            return;
+        }
+
+        _nextSavablePrefabRegistrationAttemptTime = now + 1f;
+
+        long scanStartedAt = BeginDiagnosticSample();
+        SavingLoadingManager? savingLoadingManager = Object.FindFirstObjectByType<SavingLoadingManager>();
+        RecordSceneScanDiagnostic(scanStartedAt);
+        if (savingLoadingManager == null)
+        {
+            return;
+        }
+
+        RegisterSavablePrefabs(savingLoadingManager);
+    }
+
+    internal void RegisterSavablePrefabs(SavingLoadingManager savingLoadingManager)
+    {
+        if (!_shopItemsRegistered || savingLoadingManager == null)
+        {
+            return;
+        }
+
+        int managerId = savingLoadingManager.GetInstanceID();
+        RegisterSavablePrefabsWithManager(savingLoadingManager);
+        _savablePrefabsRegistered = _itemsByKey.Values.All(runtime => runtime.SavablePrefabsRegistered);
+        _savablePrefabsRegisteredManagerId = managerId;
+    }
+
+    private static void TryRegisterPrefabWithCurrentSavingLoadingManager(BuildingObject shell)
+    {
         SavingLoadingManager? savingLoadingManager = Object.FindFirstObjectByType<SavingLoadingManager>();
         if (savingLoadingManager == null)
         {
             return;
         }
 
+        RegisterAdditionalSavablePrefab(savingLoadingManager, shell);
+    }
+
+    private void RegisterSavablePrefabsWithManager(SavingLoadingManager savingLoadingManager)
+    {
         foreach (ShopItemRuntime runtime in _itemsByKey.Values)
         {
-            foreach (BuildingObject prefab in runtime.Definition.BuildingPrefabs ?? runtime.VariantPrefabs)
+            IEnumerable<BuildingObject> prefabs =
+                runtime.Definition?.BuildingPrefabs?.Cast<BuildingObject>()
+                ?? runtime.VariantPrefabs;
+
+            foreach (BuildingObject prefab in prefabs)
             {
                 RegisterAdditionalSavablePrefab(savingLoadingManager, prefab);
             }
 
             runtime.SavablePrefabsRegistered = true;
         }
-
-        _savablePrefabsRegistered = _itemsByKey.Values.All(runtime => runtime.SavablePrefabsRegistered);
     }
 
     private static void RegisterAdditionalSavablePrefab(SavingLoadingManager savingLoadingManager, BuildingObject shell)
     {
+        if (shell == null)
+        {
+            return;
+        }
+
+        if (shell.Definition != null && shell.Definition.BuildingPrefabs != null && !shell.Definition.BuildingPrefabs.Contains(shell))
+        {
+            shell.Definition.BuildingPrefabs.Add(shell);
+        }
+
         if (!savingLoadingManager.AllSavableObjectPrefabs.Contains(shell.gameObject))
         {
             savingLoadingManager.AllSavableObjectPrefabs.Add(shell.gameObject);

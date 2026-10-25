@@ -47,20 +47,16 @@ internal sealed class ShopItemRuntime
 {
     public ShopItemRuntime(
         ShopItemPlan plan,
-        BuildingObject primaryPrefab,
-        BuildingInventoryDefinition definition,
-        ShopItemDefinition shopDefinition)
+        BuildingObject primaryPrefab)
     {
         Plan = plan;
         PrimaryPrefab = primaryPrefab;
-        Definition = definition;
-        ShopDefinition = shopDefinition;
     }
 
     public ShopItemPlan Plan { get; }
     public BuildingObject PrimaryPrefab { get; }
-    public BuildingInventoryDefinition Definition { get; }
-    public ShopItemDefinition ShopDefinition { get; }
+    public BuildingInventoryDefinition? Definition { get; set; }
+    public ShopItemDefinition? ShopDefinition { get; set; }
     public List<BuildingObject> VariantPrefabs { get; } = new();
     public bool IsConfigured { get; set; }
     public bool SavablePrefabsRegistered { get; set; }

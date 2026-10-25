@@ -1,14 +1,12 @@
 using System.Collections.Generic;
-using HarmonyLib;
+using System.Linq;
+using ModMogul;
 using UnityEngine;
 
 namespace PlaceableNodes;
 
 public sealed partial class PlaceableNodes
 {
-    private static readonly System.Reflection.FieldInfo AllShopCategoriesField =
-        AccessTools.Field(typeof(EconomyManager), "_allShopCategories");
-
     private void TryRegisterShopItems()
     {
         if (_shopItemsRegistered)
@@ -16,27 +14,152 @@ public sealed partial class PlaceableNodes
             return;
         }
 
-        Transform runtimeRoot = GetOrCreateRuntimePrefabRoot();
-
         foreach (ShopItemPlan plan in PlaceableNodesConstants.Plans)
         {
-            Sprite? icon = LoadIconSprite(plan);
-            BuildingObject primaryPrefab = CreatePrimaryShell(runtimeRoot, plan.InternalName + "_BuildingPrefab");
-            BuildingInventoryDefinition definition = CreateInventoryDefinition(plan, primaryPrefab, icon);
-            ShopItemDefinition shopDefinition = CreateShopItemDefinition(plan, definition);
+            Itemizer.ItemSpec itemSpec = CreateItemSpec(plan);
+            BuildingObject primaryPrefab = Itemizer.RegisterItem(itemSpec);
 
-            ConfigureShellDefaults(primaryPrefab, definition, plan.VariantBlockIds[0]);
+            ConfigureShellDefaults(primaryPrefab, primaryPrefab.Definition, plan.VariantBlockIds[0]);
 
-            ShopItemRuntime runtime = new(plan, primaryPrefab, definition, shopDefinition);
+            if (!_itemsByKey.TryGetValue(plan.InternalName, out ShopItemRuntime? runtime))
+            {
+                runtime = new ShopItemRuntime(plan, primaryPrefab);
+                _itemsByKey[plan.InternalName] = runtime;
+            }
+
+            runtime.Definition = primaryPrefab.Definition;
+            runtime.ShopDefinition = FindShopDefinition(primaryPrefab.Definition);
+            runtime.VariantPrefabs.Clear();
             runtime.VariantPrefabs.Add(primaryPrefab);
-
-            _itemsByKey[plan.InternalName] = runtime;
         }
 
         _shopItemsRegistered = _itemsByKey.Count == PlaceableNodesConstants.Plans.Length;
         if (_shopItemsRegistered)
         {
-            Logger.LogInfo($"{ModInfo.LOG_PREFIX} Registered {_itemsByKey.Count} vanilla shop items.");
+            Logger.LogInfo($"{ModInfo.LOG_PREFIX} Registered {_itemsByKey.Count} vanilla shop items through ModMogul.");
+        }
+    }
+
+    private static Itemizer.ItemSpec CreateItemSpec(ShopItemPlan plan)
+    {
+        return new Itemizer.ItemSpec(
+            blockID: plan.VariantBlockIds[0],
+            internalName: plan.InternalName,
+            displayName: plan.DisplayName,
+            description: plan.Description,
+            price: plan.Price,
+            shopCategory: plan.ShopCategory,
+            maxStackSize: PlaceableNodesConstants.MaxStackSize,
+            isLockedByDefault: false,
+            qFunction: "Cycle Variant");
+    }
+
+    private bool TryHydrateRuntimeDefinitions(ShopItemRuntime runtime)
+    {
+        if (runtime.Definition == null)
+        {
+            runtime.Definition = runtime.PrimaryPrefab.Definition;
+        }
+
+        BuildingInventoryDefinition? definition = runtime.Definition;
+        if (definition == null)
+        {
+            return false;
+        }
+
+        definition.FallbackName = runtime.Plan.DisplayName;
+        definition.FallbackDescription = runtime.Plan.Description;
+        definition.MaxInventoryStackSize = PlaceableNodesConstants.MaxStackSize;
+        definition.CanBePlacedInTerrain = true;
+        definition.UseReverseRotationDirection = false;
+
+        Sprite? icon = LoadIconSprite(runtime.Plan);
+        if (icon != null)
+        {
+            definition.InventoryIcon = icon;
+            definition.ProgrammerInventoryIcon = icon;
+        }
+
+        runtime.ShopDefinition ??= FindShopDefinition(definition);
+        if (runtime.ShopDefinition != null)
+        {
+            runtime.ShopDefinition.BuildingInventoryDefinition = definition;
+            runtime.ShopDefinition.Price = runtime.Plan.Price;
+            runtime.ShopDefinition.IsLockedByDefault = false;
+            runtime.ShopDefinition.IsDummyItem = false;
+            runtime.ShopDefinition.PrefabToSpawn = null;
+        }
+
+        return true;
+    }
+
+    private static ShopItemDefinition? FindShopDefinition(BuildingInventoryDefinition? definition)
+    {
+        if (definition == null)
+        {
+            return null;
+        }
+
+        EconomyManager? economyManager = Singleton<EconomyManager>.Instance;
+        if (economyManager == null)
+        {
+            return null;
+        }
+
+        return economyManager.AllShopItems
+            .Select(item => item?.Definition)
+            .FirstOrDefault(shopDefinition => shopDefinition?.BuildingInventoryDefinition == definition);
+    }
+
+    internal void InjectShopDefinitions(EconomyManager economyManager)
+    {
+        TryRegisterShopItems();
+        TryConfigurePrefabs();
+    }
+
+    private static void ConfigureShellDefaults(BuildingObject shell, BuildingInventoryDefinition? definition, int blockId)
+    {
+        if (definition != null)
+        {
+            shell.Definition = definition;
+            definition.CanBePlacedInTerrain = true;
+        }
+
+        shell.SavableObjectID = (SavableObjectID)blockId;
+        shell.RequiresFlatGround = false;
+        shell.PlacementNodeRequirement = PlacementNodeRequirement.None;
+        shell.SupportType = SupportType.None;
+        shell.BuildingSupportsEnabled = false;
+        shell.RotatingShouldMirrorWhenSnapped = false;
+
+        if (shell.PhysicalColliderObject == null)
+        {
+            shell.PhysicalColliderObject = shell.gameObject;
+        }
+
+        if (shell.BuildingPlacementColliderObject == null)
+        {
+            GameObject placementObject = new("BuildingPlacementColliderObject");
+            placementObject.transform.SetParent(shell.transform, false);
+            SetBuildingLayer(placementObject);
+            shell.BuildingPlacementColliderObject = placementObject;
+        }
+
+        if (shell.BuildingCrateSpawnPoint == null)
+        {
+            GameObject spawnPoint = new("BuildingCrateSpawnPoint");
+            spawnPoint.transform.SetParent(shell.transform, false);
+            shell.BuildingCrateSpawnPoint = spawnPoint.transform;
+        }
+
+        if (shell.GetComponent<PlaceableNodesPlacementColliderController>() == null)
+        {
+            shell.gameObject.AddComponent<PlaceableNodesPlacementColliderController>();
+        }
+
+        if (shell.GetComponent<PlaceableNodesPlacementItemMarker>() == null)
+        {
+            shell.gameObject.AddComponent<PlaceableNodesPlacementItemMarker>();
         }
     }
 
@@ -49,7 +172,6 @@ public sealed partial class PlaceableNodes
 
         GameObject runtimeRoot = new("__PlaceableNodesRuntime");
         runtimeRoot.hideFlags = HideFlags.HideInHierarchy | HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
-        runtimeRoot.transform.SetParent(transform, false);
         runtimeRoot.SetActive(false);
         DontDestroyOnLoad(runtimeRoot);
         _runtimePrefabRoot = runtimeRoot.transform;
@@ -86,40 +208,6 @@ public sealed partial class PlaceableNodes
         {
             target.layer = buildingLayer;
         }
-    }
-
-    private BuildingInventoryDefinition CreateInventoryDefinition(ShopItemPlan plan, BuildingObject primaryPrefab, Sprite? icon)
-    {
-        BuildingInventoryDefinition definition = ScriptableObject.CreateInstance<BuildingInventoryDefinition>();
-        definition.hideFlags = HideFlags.HideAndDontSave;
-        definition.name = plan.InternalName + "_Definition";
-        definition.Name = plan.DisplayName;
-        definition.Description = plan.Description;
-        definition.InventoryIcon = icon;
-        definition.ProgrammerInventoryIcon = icon;
-        definition.QButtonFunction = "Cycle Variant";
-        definition.MaxInventoryStackSize = PlaceableNodesConstants.MaxStackSize;
-        definition.BuildingPrefabs = new List<BuildingObject> { primaryPrefab };
-        definition.CanBePlacedInTerrain = true;
-        definition.PackedPrefab = null;
-        definition.UseReverseRotationDirection = false;
-        return definition;
-    }
-
-    private static ShopItemDefinition CreateShopItemDefinition(ShopItemPlan plan, BuildingInventoryDefinition definition)
-    {
-        ShopItemDefinition shopDefinition = ScriptableObject.CreateInstance<ShopItemDefinition>();
-        shopDefinition.hideFlags = HideFlags.HideAndDontSave;
-        shopDefinition.name = plan.InternalName + "_ShopItem";
-        shopDefinition.Name = plan.DisplayName;
-        shopDefinition.Description = plan.Description;
-        shopDefinition.UseNameAndDescriptionOfBuildingDefinition = true;
-        shopDefinition.Price = plan.Price;
-        shopDefinition.IsLockedByDefault = false;
-        shopDefinition.IsDummyItem = false;
-        shopDefinition.BuildingInventoryDefinition = definition;
-        shopDefinition.PrefabToSpawn = null;
-        return shopDefinition;
     }
 
     private Sprite? LoadIconSprite(ShopItemPlan plan)
@@ -272,63 +360,6 @@ public sealed partial class PlaceableNodes
         {
             RenderTexture.active = previous;
             RenderTexture.ReleaseTemporary(renderTexture);
-        }
-    }
-
-    internal void InjectShopDefinitions(EconomyManager economyManager)
-    {
-        TryLoadNodeBundle();
-        TryRegisterShopItems();
-        TryConfigurePrefabs();
-        EnsureSavablePrefabRegistration();
-
-        List<ShopCategory>? allShopCategories = AllShopCategoriesField.GetValue(economyManager) as List<ShopCategory>;
-        if (allShopCategories == null)
-        {
-            allShopCategories = new List<ShopCategory>();
-            AllShopCategoriesField.SetValue(economyManager, allShopCategories);
-        }
-
-        EnsureCategoryContainsPlans(allShopCategories, PlaceableNodesConstants.OreShopCategory, PlaceableNodeKind.OreNode);
-        EnsureCategoryContainsPlans(allShopCategories, PlaceableNodesConstants.AutoMinerShopCategory, PlaceableNodeKind.AutoMinerPlacementNode);
-    }
-
-    private void EnsureCategoryContainsPlans(List<ShopCategory> categories, string categoryName, PlaceableNodeKind kind)
-    {
-        ShopCategory? category = categories.Find(existing =>
-            existing != null &&
-            string.Equals(existing.CategoryName, categoryName, System.StringComparison.OrdinalIgnoreCase));
-
-        if (category == null)
-        {
-            category = new ShopCategory
-            {
-                CategoryName = categoryName,
-                ShopItemDefinitions = new List<ShopItemDefinition>(),
-                ShopItems = new List<ShopItem>(),
-                DontShowIfAllItemsAreLocked = false,
-                HolidayType = HolidayType.None
-            };
-
-            categories.Add(category);
-        }
-        else
-        {
-            category.ShopItemDefinitions ??= new List<ShopItemDefinition>();
-            category.ShopItems ??= new List<ShopItem>();
-        }
-
-        foreach (ShopItemRuntime runtime in _itemsByKey.Values)
-        {
-            if (runtime.Plan.Kind != kind)
-            {
-                continue;
-            }
-
-            if (!category.ShopItemDefinitions.Contains(runtime.ShopDefinition))
-            {
-                category.ShopItemDefinitions.Add(runtime.ShopDefinition);
-            }
         }
     }
 }

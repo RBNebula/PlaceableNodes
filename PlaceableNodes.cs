@@ -3,6 +3,7 @@ using BepInEx;
 namespace PlaceableNodes;
 
 [BepInPlugin(ModInfo.PLUGIN_GUID, ModInfo.PLUGIN_NAME, ModInfo.PLUGIN_VERSION)]
+[BepInDependency("modmogul.core")]
 [BepInDependency("com.rebind", BepInDependency.DependencyFlags.SoftDependency)]
 public sealed partial class PlaceableNodes : BaseUnityPlugin
 {

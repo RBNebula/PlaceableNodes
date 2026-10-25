@@ -10,6 +10,9 @@ namespace PlaceableNodes;
 internal static class PlaceableNodesUtility
 {
     private static readonly BindingFlags AnyInstance = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+    private const float AutoMinerRepairCacheSeconds = 0.2f;
+    private static float _nextAutoMinerRepairCacheRefreshTime;
+    private static AutoMiner[] _cachedAutoMiners = System.Array.Empty<AutoMiner>();
 
     internal static void ClearHideFlagsRecursively(GameObject? root)
     {
@@ -680,7 +683,7 @@ internal static class PlaceableNodesUtility
             SetPrivateField(node, "<AttachedBuildingObject>k__BackingField", null);
         }
 
-        AutoMiner[] miners = Object.FindObjectsByType<AutoMiner>(FindObjectsSortMode.None);
+        AutoMiner[] miners = GetCachedAutoMiners();
         float closestDistance = float.MaxValue;
         BuildingObject? closestMatch = null;
 
@@ -720,6 +723,19 @@ internal static class PlaceableNodesUtility
 
         node.AttachBuilding(closestMatch);
         return true;
+    }
+
+    private static AutoMiner[] GetCachedAutoMiners()
+    {
+        float now = Time.unscaledTime;
+        if (now < _nextAutoMinerRepairCacheRefreshTime)
+        {
+            return _cachedAutoMiners;
+        }
+
+        _nextAutoMinerRepairCacheRefreshTime = now + AutoMinerRepairCacheSeconds;
+        _cachedAutoMiners = Object.FindObjectsByType<AutoMiner>(FindObjectsSortMode.None);
+        return _cachedAutoMiners;
     }
 
     private static void AttachPlacementDamageProxy(GameObject placementObject, IDamageable? damageTarget)

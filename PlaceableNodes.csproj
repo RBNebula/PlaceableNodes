@@ -12,6 +12,7 @@
     <MineMogulManagedDir>$(MineMogulDir)\MineMogul_Data\Managed</MineMogulManagedDir>
     <MineMogulBepInExCoreDir>$(MineMogulDir)\BepInEx\core</MineMogulBepInExCoreDir>
     <MineMogulPluginsDir>$(MineMogulDir)\BepInEx\plugins</MineMogulPluginsDir>
+    <MineMogulModMogulDir>$(MineMogulPluginsDir)\ModMogul</MineMogulModMogulDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,6 +26,10 @@
     </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>$(MineMogulManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ModMogul">
+      <HintPath>$(MineMogulModMogulDir)\ModMogul.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine">
